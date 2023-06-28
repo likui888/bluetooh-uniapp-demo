@@ -158,7 +158,7 @@ export default class BleTool {
 			system_no = system.replace('Android', '');
 			console.log("android版本", system_no);
 			//android 6.0以上需授权地理位置权限
-			if (Number(system_no) > 5) {
+			/* if (Number(system_no) > 5) {
 				uni.getSetting({
 					success: function(res) {
 						console.log("getSetting", res);
@@ -177,9 +177,9 @@ export default class BleTool {
 						callback(false);
 					}
 				});
-			} else {
+			} else { */
 				that.startSearchDevice(callback);
-			}
+			// }
 		} else {
 			console.log("不知道什么鬼的机型", that.systemInfo)
 			that.startSearchDevice(callback);
@@ -427,7 +427,7 @@ export default class BleTool {
 	//连接进行
 	connectDeviceStart(item, msg, callback = () => {}) {
 		let that = this;
-		if (item.deviceId) {
+		if (!item.deviceId) {
 			uni.showToast({
 				title: '设备ID不可空',
 				icon: 'none'
@@ -441,11 +441,9 @@ export default class BleTool {
 			deviceId: that.connectId,
 			success: function(res) {
 				console.log("连接成功", res)
-				uni.showToast({
-					title: '连接成功',
-				})
 				that.connectState = true;
-				that.searchService(callback);
+				// that.searchService(callback);
+				that.setDefaultService(callback)
 				console.log("保存Storage");
 				let setStorageState = true;
 				for (let i = 0; i < that.storageDeviceList.length; i++) {
@@ -503,6 +501,21 @@ export default class BleTool {
 				}
 			}
 		})
+	}
+	//默认设置服务信息
+	setDefaultService(callback = function() {}){
+		const NOTIFY_UUID = "0000fff1-0000-1000-8000-00805f9b34fb"
+		const WRITE_UUID = "0000fff2-0000-1000-8000-00805f9b34fb"
+		const SERVICE_UUID = '0000FFF0-0000-1000-8000-00805F9B34FB'
+		console.log("设备默认服务和特征值 start ......")
+		this.mainServiceId = SERVICE_UUID;
+		this.readUuid = '';
+		this.writeUuid = WRITE_UUID;
+		this.notifyUuid = NOTIFY_UUID;
+		this.indicateUuid = '';
+		// this.openNotify();
+		console.log("设备默认服务和特征值 end ......")
+		callback(true)
 	}
 	//搜索服务
 	searchService(callback = function() {}) {
@@ -623,6 +636,7 @@ export default class BleTool {
 			serviceId: that.mainServiceId,
 			characteristicId: that.notifyUuid,
 			state: true,
+			writeType:"writeNoResponse",
 			success: function(res) {
 				console.log("notify打开成功", res)
 				that.listenNotifyValueChange();
@@ -645,7 +659,7 @@ export default class BleTool {
 			let value = res.value
 			console.log(value);
 			let value2 = that.uint8Array2Str(value)
-			console.log("returnstr", value2)
+			console.error("returnstr", value2)
 			let dataView = new DataView(that.string2Buffer(value2))
 		})
 	}
@@ -679,10 +693,10 @@ export default class BleTool {
 	//多次写入
 	writeCharacteristicList(buff, callback = function() {}) {
 		let that = this;
-		console.log("多次写入开始", buff);
-		uni.showLoading({
+		// console.log("多次写入开始", buff);
+		/* uni.showLoading({
 			title: "数据写入中"
-		})
+		}) */
 		var time = that.oneTimeData;
 		var looptime = parseInt(buff.length / time);
 		var lastData = parseInt(buff.length % time);
@@ -690,13 +704,13 @@ export default class BleTool {
 		that.looptime = looptime + 1;
 		that.lastData = lastData;
 		that.currentTime = 1
-		console.log('准备批量写入,写入总次数' + that.loopNumData + '最后一次写入数据' + that.lastData);
+		// console.log('准备批量写入,写入总次数' + that.loopNumData + '最后一次写入数据' + that.lastData);
 		that.writeCharacteristicSend(buff, callback);
 	}
 	//多次写入执行
 	writeCharacteristicSend(buff, callback = function() {}) {
 		let that = this;
-		console.log("多次写入执行");
+		// console.log("多次写入执行");
 		var currentTime = that.currentTime;
 		var loopTime = that.looptime;
 		var lastData = that.lastData;
@@ -705,23 +719,27 @@ export default class BleTool {
 		var currentPrint = that.currentPrint;
 		var buf;
 		var dataView;
+		// console.log("开始展示解析数据.....")
 		if (currentTime < loopTime) {
 			buf = new ArrayBuffer(onTimeData);
 			dataView = new DataView(buf);
 			for (var i = 0; i < onTimeData; ++i) {
+				// console.log(`第${i}位数据为：`,buff[(currentTime - 1) * onTimeData + i])
 				dataView.setUint8(i, buff[(currentTime - 1) * onTimeData + i]);
 			}
 		} else {
 			buf = new ArrayBuffer(lastData);
 			dataView = new DataView(buf);
 			for (var i = 0; i < lastData; ++i) {
+				// console.log(`第${i}位数据为：`,buff[(currentTime - 1) * onTimeData + i])
 				dataView.setUint8(i, buff[(currentTime - 1) * onTimeData + i]);
 			}
 		}
-		console.log('第' + currentTime + '次发送数据大小为：' + buf.byteLength);
-		console.log('deviceId:' + that.connectId);
-		console.log('serviceId:' + that.mainServiceId);
-		console.log('characteristicId:' + that.writeUuid);
+		// console.log("解析数据展示结束.....")
+		// console.log('第' + currentTime + '次发送数据大小为：' + buf.byteLength);
+		// console.log('deviceId:' + that.connectId);
+		// console.log('serviceId:' + that.mainServiceId);
+		// console.log('characteristicId:' + that.writeUuid);
 
 		uni.writeBLECharacteristicValue({
 			deviceId: that.connectId,
@@ -741,9 +759,9 @@ export default class BleTool {
 					that.currentTime = currentTime
 					that.writeCharacteristicSend(buff, callback);
 				} else {
-					uni.showToast({
+				/* 	uni.showToast({
 						title: '已打印第' + currentPrint + '张'
-					});
+					}); */
 					if (currentPrint == printNum) {
 						that.looptime = 0;
 						that.lastData = 0;
@@ -751,10 +769,11 @@ export default class BleTool {
 						that.isReceiptSend = false;
 						that.isLabelSend = false;
 						that.currentPrint = 1;
-						uni.showToast({
+					/* 	uni.showToast({
 							title: '写入已完成',
 							icon: "success"
-						})
+						}) */
+						// console.log("数据写入完成...")
 						callback(true)
 					} else {
 						currentPrint++;
@@ -769,7 +788,7 @@ export default class BleTool {
 	}
 	//写入数据
 	writeCharacteristicValue(buff, callback = function() {}) {
-		console.log("准备写入数据", buff)
+		// console.log("准备写入数据", buff)
 		let that = this;
 		console.log(that.connectId, that.mainServiceId, that.writeUuid, buff);
 		if (that.connectId && that.mainServiceId && that.writeUuid) {
